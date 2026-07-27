@@ -441,6 +441,27 @@ otherwise buys a lot.
 
 ## Tests
 
+Unlike everything else here, this part needs tooling on your own machine. Running the stack
+needs only Docker, because the builds happen inside containers — but `mvn` runs on the host, so
+for tests you need **Maven** and a **JDK 17 or newer** installed locally.
+
+Both have to be on your `PATH`, otherwise you'll get `'mvn' is not recognized as an internal or
+external command`. On Windows that means adding them under Environment Variables:
+
+- Add Maven's `bin` folder to `Path`, for example `C:\apache-maven-3.9.6\bin`
+- Set `JAVA_HOME` to your JDK folder, for example `C:\Program Files\Java\jdk-17` — Maven reads
+  this to find the compiler, and won't start without it even if `java` itself is on the `PATH`
+
+Open Environment Variables from Start, "Edit the system environment variables". Then open a
+**new** terminal — existing ones keep the old `PATH` — and check both resolve:
+
+```bash
+mvn -version
+```
+
+That prints the Maven version and the JDK it picked up, which is the quickest way to catch a
+`JAVA_HOME` pointing at a JRE or at the wrong Java version.
+
 ```bash
 mvn -f backend/pom.xml test
 mvn -f frontend/pom.xml test
@@ -451,10 +472,16 @@ models that wrap their answer in a thinking block, and braces appearing inside s
 both of which broke an earlier and more naive version. `DomainLogicTest` covers slug generation
 and dedup key stability. `MentionStatusTest` covers the status buckets and their boundaries.
 
-Building by hand, if you're not using Docker:
+Building by hand, if you're not using Docker — same Maven and JDK requirement as above:
 
 ```bash
 mvn -f shared-library/pom.xml install   # must come first
 mvn -f backend/pom.xml package
 mvn -f frontend/pom.xml package
 ```
+
+`shared-library` genuinely has to go first. These are three separate builds rather than modules
+of one parent, so `backend` and `frontend` resolve it as an ordinary dependency out of your
+local Maven repository — and it isn't there until `install` puts it there. Skip that step and
+both fail with "Could not resolve dependencies ... press-monitor-shared:1.0.0". Docker doesn't
+hit this because each Dockerfile builds `shared-library` itself first.
