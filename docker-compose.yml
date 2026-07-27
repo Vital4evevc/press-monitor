@@ -35,7 +35,7 @@ services:
       - mysql-data:/var/lib/mysql
       # Creates the frontend's separate read-only user, and Quartz's JDBC job store tables,
       # on first init (only runs against an empty data dir — see the comments in each script).
-      - ./data/mysql-init:/docker-entrypoint-initdb.d:ro
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpw"]
       interval: 10s

@@ -13,6 +13,37 @@
 -- Snapshot taken: 2026-07-27 09:45:38Z  |  rows: 989
 
 USE pressmonitor;
+
+CREATE TABLE IF NOT EXISTS company (
+    id          VARCHAR(128) NOT NULL,
+    name        VARCHAR(256) NOT NULL,
+    search_hint VARCHAR(256) DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY idx_company_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS mention (
+    id                   BIGINT       NOT NULL AUTO_INCREMENT,
+    company_id           VARCHAR(128) NOT NULL,
+    title                VARCHAR(1024) NOT NULL,
+    snippet              TEXT,
+    url                  VARCHAR(2048),
+    source               VARCHAR(256),
+    published_at         DATETIME(6),
+    collected_at         DATETIME(6)  NOT NULL,
+    -- Sentiment is persisted as its enum name: POSITIVE, NEGATIVE, NEUTRAL or UNKNOWN.
+    sentiment            VARCHAR(16)  NOT NULL,
+    sentiment_confidence DOUBLE,
+    sentiment_reason     VARCHAR(1024),
+    -- SHA-256 of the article URL, falling back to the title. Paired with company_id this is
+    -- what stops a re-run storing the same article twice.
+    dedup_key            VARCHAR(64)  NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_mention_company_dedup (company_id, dedup_key),
+    KEY idx_mention_company (company_id),
+    KEY idx_mention_published (published_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
