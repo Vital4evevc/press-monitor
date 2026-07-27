@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Company — Portfolio Press Monitor</title>
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <div>
+            <a href="index.html" class="back-link">&larr; All companies</a>
+            <h1 id="companyName">Loading…</h1>
+            <p class="subtitle" id="companySub"></p>
+        </div>
+    </div>
+    <div class="actions">
+        <span id="statusBadge" class="badge hidden"></span>
+    </div>
+</header>
+
+<main>
+    <!-- Quarter stats -->
+    <section class="cards" id="cards"></section>
+
+    <!-- All mentions -->
+    <section class="panel">
+        <h2>Mentions</h2>
+        <div id="mentions"></div>
+    </section>
+</main>
+
+<script src="company.js"></script>
+</body>
+</html>

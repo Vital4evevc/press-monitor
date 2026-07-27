@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: press-monitor-backend
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/pressmonitor?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:pressmonitor}
+    password: ${SPRING_DATASOURCE_PASSWORD:pressmonitor}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  quartz:
+    # JDBC rather than the default in-memory store, so a fire missed while the backend was
+    # down survives the restart — QuartzConfig then sets FIRE_ONCE_NOW to run it immediately.
+    job-store-type: jdbc
+    jdbc:
+      # QRTZ_* tables are provisioned by mysql-init/02-quartz-schema.sql, not by Spring.
+      initialize-schema: never
+
+server:
+  # Internal only — the browser talks to the frontend on 8080.
+  port: ${SERVER_PORT:8081}
+
+# Everything below is env-overridable, e.g.
+#   OLLAMA_MODEL=llama3.2 MONITORING_CONCURRENCY=10 ./run.sh
+
+ollama:
+  base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+  # Quoted because the tag contains a colon. Spring splits the placeholder on the first one,
+  # so the default still resolves to qwen3:4b.
+  model: "${OLLAMA_MODEL:qwen3:4b}"
+  # A timeout degrades that item to UNKNOWN rather than failing the run, so don't set it tight.
+  timeout-seconds: ${OLLAMA_TIMEOUT:60}
+  temperature: ${OLLAMA_TEMPERATURE:0.0}
+
+monitoring:
+  # Keep in sync with the frontend's copy — it computes the same window off its own
+  # connection, and the two dashboards disagree if these drift.
+  quarter-days: ${MONITORING_QUARTERDAYS:90}
+  max-items-per-company: 15
+  request-delay-ms: 800
+  # Keep at or below the Hikari pool size (default 10).
+  concurrency: ${MONITORING_CONCURRENCY:6}
+  # Deliberately much lower than concurrency above: Google blocks bursty RSS traffic.
+  rss-concurrency: ${MONITORING_RSSCONCURRENCY:2}
+  # Quartz cron syntax, not Spring's: exactly one of day-of-month/day-of-week must be "?".
+  daily-cron: ${MONITORING_DAILYCRON:0 0 7 * * ?}
+
+alert:
+  webhook-url: ${ALERT_WEBHOOK_URL:https://webhook.site/cbba35a3-f77a-42e2-bc62-671c4e2a08eb}
+
+logging:
+  level:
+    com.ourcrowd.pressmonitor: INFO

@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: press-monitor-frontend
+
+  # Same database the backend writes to, reached as a separate read-only user.
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/pressmonitor?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:pressmonitor_ro}
+    password: ${SPRING_DATASOURCE_PASSWORD:pressmonitor_ro}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      # Read-only user, and the backend owns the schema (it runs ddl-auto: update).
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+server:
+  # Public-facing — this is the port the browser hits.
+  port: ${SERVER_PORT:8080}
+
+monitoring:
+  # Must match the backend's value, or the two services disagree on "this quarter".
+  quarter-days: ${MONITORING_QUARTERDAYS:90}
+
+# Only used for /api/run and /api/health, the two endpoints this service can't answer itself.
+# Every other /api/* read goes straight to MySQL through its own DashboardController.
+backend:
+  base-url: ${BACKEND_BASE_URL:http://localhost:8081}
+  connect-timeout-seconds: ${BACKEND_CONNECT_TIMEOUT:5}
+  read-timeout-seconds: ${BACKEND_READ_TIMEOUT:15}
+
+logging:
+  level:
+    com.ourcrowd.pressmonitor: INFO

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.ourcrowd</groupId>
+    <artifactId>press-monitor-shared</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>press-monitor-shared</name>
+    <description>
+        What press-monitor-backend and press-monitor-frontend genuinely both need: the
+        Company/Mention JPA entities and the Sentiment enum. Each service queries the same
+        MySQL tables through its own DataSource (backend: full read/write; frontend:
+        read-only) and its own copy of the Spring Data repository interfaces — those aren't
+        shared, since they're cheap to duplicate and doing so keeps each service's data
+        access independent of a shared-library release. Anything used by only one side — the
+        dashboard-facing DTOs, DashboardService/DashboardController, MentionStatus — lives in
+        that service instead of here too.
+    </description>
+
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <!-- Pulls in Spring Boot's managed dependency versions so jakarta.persistence-api below
+         resolves to exactly the version press-monitor-backend/-frontend already use (via
+         spring-boot-starter-parent 3.2.5), without this module needing that parent itself. -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>3.2.5</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- For the @Entity/@Id/etc. annotations on Company/Mention. This module no longer
+             has any Spring Data repositories (those got duplicated into each service instead),
+             so it needs nothing from spring-data-jpa itself — just the plain JPA API. -->
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>17</release>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

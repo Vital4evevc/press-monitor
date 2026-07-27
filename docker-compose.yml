@@ -1,0 +1,120 @@
+# One-command stack: MySQL + Ollama (with model auto-pull) + the backend API + the
+# frontend BFF that serves the dashboard.
+#
+#   docker compose up --build
+#
+# Then open http://localhost:8080 (frontend) and trigger a run with:
+#   curl -X POST http://localhost:8080/api/run
+#
+# The browser only ever talks to the frontend (:8080). Companies/mentions/summary/timeline
+# are served by the frontend directly from MySQL (its own read-only 'pressmonitor_ro' user —
+# see mysql-init/01-frontend-readonly-user.sql); only /api/run and /api/health are proxied
+# to the backend (:8081, also published for direct debugging), since those need the
+# pipeline/Ollama connection only the backend has. Both services are built from this repo
+# root so their Dockerfiles can pull in ../shared-library — see backend/Dockerfile and
+# frontend/Dockerfile.
+#
+# Override the model / behaviour via a .env file or shell env, e.g.
+#   OLLAMA_MODEL=llama3.2 docker compose up --build
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpw
+      MYSQL_DATABASE: pressmonitor
+      MYSQL_USER: pressmonitor
+      MYSQL_PASSWORD: pressmonitor
+    # Bound to loopback deliberately. The backend and frontend reach MySQL over the compose
+    # network as "mysql:3306" regardless of this line — publishing exists only so you can
+    # point a SQL client at it from this machine. A bare "3306:3306" binds 0.0.0.0, which
+    # would put a database whose credentials are checked into git on the public internet.
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Creates the frontend's separate read-only user, and Quartz's JDBC job store tables,
+      # on first init (only runs against an empty data dir — see the comments in each script).
+      - ./data/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpw"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # Local LLM server. CPU by default.
+  ollama:
+    image: ollama/ollama:latest
+    # Loopback only — same reasoning as mysql. Ollama has no authentication at all, so an
+    # exposed 11434 is an open LLM endpoint for anyone who finds it.
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # One-shot: pulls the model into the ollama volume, then exits.
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-qwen3:4b}"]
+    restart: "no"
+
+  # REST API + collection/classification pipeline.
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/pressmonitor?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      SPRING_DATASOURCE_USERNAME: pressmonitor
+      SPRING_DATASOURCE_PASSWORD: pressmonitor
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: "qwen3:4b"
+      ALERT_WEBHOOK_URL: "${ALERT_WEBHOOK_URL:-https://webhook.site/cbba35a3-f77a-42e2-bc62-671c4e2a08eb}"
+    # Loopback only. The frontend calls this over the compose network as "backend:8081", so
+    # this publishing is purely for poking at /api/run and /api/health yourself. It's also the
+    # only service with an unauthenticated endpoint that does real work: POST /api/run kicks
+    # off a few thousand LLM calls, so leaving it open to the internet is a free DoS button.
+    # To reach it from elsewhere, tunnel instead: ssh -L 8081:localhost:8081 <host>
+    ports:
+      - "127.0.0.1:8081:8081"
+
+  # Serves the dashboard; reads companies/mentions/summary/timeline directly from MySQL
+  # (read-only user) and proxies only /api/run + /api/health to the backend.
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    environment:
+      BACKEND_BASE_URL: http://backend:8081
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/pressmonitor?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      SPRING_DATASOURCE_USERNAME: "${FRONTEND_DB_USERNAME:-pressmonitor_ro}"
+      SPRING_DATASOURCE_PASSWORD: "${FRONTEND_DB_PASSWORD:-pressmonitor_ro}"
+    # The one service actually meant to be reachable, so this stays on all interfaces. If this
+    # host is internet-facing, put a reverse proxy with TLS and auth in front of it — the
+    # dashboard and its "Run now" button have no authentication of their own.
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:
+  ollama-data:

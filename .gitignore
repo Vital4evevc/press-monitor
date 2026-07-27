@@ -1,0 +1,17 @@
+# Point-in-time DB dumps from ./seed-db.sh --export. The seed files under data/mysql-init/
+# are meant to be committed; these timestamped backups are not.
+backups/
+
+# Build output
+target/
+
+# Local overrides for docker-compose. Can hold credentials, so never commit it.
+.env
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Logs
+*.log

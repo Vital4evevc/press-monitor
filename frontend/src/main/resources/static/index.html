@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>OurCrowd — Portfolio Press Monitor</title>
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <h1>Portfolio Press Monitor</h1>
+        <p class="subtitle">Quarterly news coverage &amp; sentiment across OurCrowd companies</p>
+    </div>
+    <div class="actions">
+        <button id="runBtn" class="btn">Run now</button>
+    </div>
+</header>
+
+<main>
+    <!-- Summary cards -->
+    <section class="cards" id="cards"></section>
+
+    <!-- Companies table -->
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Companies</h2>
+            <div class="filters">
+                <input type="search" id="search" placeholder="Filter companies…"/>
+                <select id="statusFilter">
+                    <option value="">All statuses</option>
+                    <option value="FRESH">Fresh (≤3d)</option>
+                    <option value="RECENT">Recent (≤45d)</option>
+                    <option value="COOLING">Cooling (≤90d)</option>
+                    <option value="DORMANT">Dormant (&gt;90d)</option>
+                    <option value="NO_COVERAGE">No coverage ever</option>
+                </select>
+                <select id="sortBy">
+                    <option value="mentions">Sort: mentions (quarter)</option>
+                    <option value="recent">Sort: last mentioned</option>
+                </select>
+                <select id="sortDir">
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                </select>
+                <label class="chk"><input type="checkbox" id="onlyCovered"/> Only with coverage</label>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table id="companyTable">
+                <thead>
+                <tr>
+                    <th>Company</th>
+                    <th class="num">Mentions (Q)</th>
+                    <th>Sentiment</th>
+                    <th>Last mentioned</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Recent mentions feed -->
+    <section class="panel hidden" id="feedPanel">
+        <h2>Latest mentions</h2>
+        <ul id="feed" class="feed"></ul>
+    </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
